@@ -10,7 +10,9 @@ import org.springframework.data.annotation.LastModifiedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 /** 할일: Lombok 사용하기
  * 주의: maven 때랑 같은 방식인 것들도 이름이 다르게 되어 있으니 헷갈리지 않게 주의!
@@ -22,12 +24,6 @@ import java.util.Objects;
  *
  */
 
-/** JPA 란 자바 ORM 기술 표준
- * Entity 를 분석, create 나 insert 같은 sql 쿼리를 생성해준다.
- * JDBC API 사용해서 DB 접근도 해주고 객체와 테이블을 매핑해준다.
- *
- * */
-
 /* @Table - 엔티티와 매핑할 정보를 지정하고
 *           사용법) @Index(name="원하는명칭", columnList = "사용할 테이블명")
 *                   name 부분을 생략하면 원래 이름 사용한다는 것.
@@ -38,12 +34,12 @@ import java.util.Objects;
         @Index(columnList = "title"),
         @Index(columnList = "hashtag"),
         @Index(columnList = "createdAt"),
-        @Index(columnList = "createdBy"),
+        @Index(columnList = "createdBy")
 })
 @Entity /* 1) 롬복을 이용해서 클래스를 엔티티로 변경. @Entity 가 붙은 클래스는 JPA 가 관리하게 된다. 그래서 기본키(PK)가 뭔지 알려줘야 한다. 그게 @Id 에너테이션 이다.*/
 @Getter /* 2) getter/setter, toString 등의 롬복 어노테이션 사용 */// 롬복의 @Getter 를 쓰면 알아서 모든 필드의 getter 들이 생성된다.
-@ToString // 모든 필드의 toString 생성
-public class Ex01_1_Article_엔티티로_변경 {
+@ToString
+public class Ex02_1_Article_바인딩_설정 {
 
     @Id // '전체 필드 중에서 이게 PK다' 라고 말해주는거. @Id 가 없으면 @Entity 에서 에러 난다.
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 해당 필드가 auto_increment 인 경우 @GeneratedValue 를 써서 자동으로 값이 생성되게 해줘야 한다. 기본키 전략
@@ -60,10 +56,27 @@ public class Ex01_1_Article_엔티티로_변경 {
     @Setter @Column(nullable = false, length = 10000) private String content; // 본문
     @Setter private String hashtag; // 해시태그
 
-    /* jpa auditing: jpa 에서 자동으로 세팅하게 해줄때 사용하는 기능
+    /* 양방향 바인딩
+    *
+    * */
+    @OrderBy("id") // 양방향 바인딩을 할건데 정렬 기준을 id로 하겠다는 뜻
+    @OneToMany(mappedBy = "article", cascade = CascadeType.ALL)
+    @ToString.Exclude /** 이거 중요. 맨 위에 @ToString 이 있는데 마우스 올려보면 '@ToString includes ~ lazy load 어쩌고' 나온다. 이건 퍼포먼스, 메모리 저하를 일으킬 수 있어서 성능적으로 안좋은 영향을 줄 수 있다. 그래서 해당 필드를 가려주세요 하는거 */
+    private final Set<ArticleComment> articleComments = new LinkedHashSet<>();
+    /* 이건 더 중요: @ToString.Exclude 이걸 안해주면 순환참조 이슈가 생길 수 있다.
+                    여기서 ToString 이 id, title, content, hashtag 다 찍고 Set<ArticleComment> 부분을 찍으려고 ArticleComment.java 파일에 가서 거기 있는 @ToString 이 원소들 다 찍으려고 하면서 원소들 중에 private Article article; 을 보는 순간 다시 Article 의 @ToString 이 동작하면서 또 모든 원소들을 찍으려고 하고, 그러다가 다시 Set<ArticleComment> 을 보고 또 ArticleComment 로 가서 ToString 돌리고 ... 이런식으로 동작하면서 메모리가 터질 수 있다. 그래서 Set<ArticleComment>에 @ToString.Exclude 를 달아준다.
+
+                    ArticleComment 에 걸지 않고 Article 에 걸어주는 이유는 댓글이 글을 참조하는건 정상적인 경우인데, 반대로 글이 댓글을 참조하는건 일반적인 경우는 아니기 때문에 Article 에 exclude 를 걸어준다.
+    *
+    * */
+
+
+    /**
+    jpa auditing: jpa 에서 자동으로 세팅하게 해줄때 사용하는 기능
                     이거 하려면 config 파일이 별도로 있어야 한다.
                     config 패키지 만들어서 JpaConfig 클래스 만들자
-    * */
+     */
+
     // 메타데이터
     @CreatedDate
     @Column(nullable = false)
@@ -93,15 +106,18 @@ public class Ex01_1_Article_엔티티로_변경 {
     /** Entity 를 만들때는 무조건 기본 생성자가 필요하다.
      * public 또는 protected 만 가능한데, 평생 아무데서도 기본생성자를 안쓰이게 하고 싶어서 protected 로 변경함
      * */
-    protected Ex01_1_Article_엔티티로_변경() { }
+    protected Ex02_1_Article_바인딩_설정() { }
 
     /** 사용자가 입력하는 값만 받기. 나머지는 시스템이 알아서 하게 해주면 됨. */
-    private Ex01_1_Article_엔티티로_변경(String title, String content, String hashtag) {
+    private Ex02_1_Article_바인딩_설정(String title, String content, String hashtag) {
         this.title = title;
         this.content = content;
         this.hashtag = hashtag;
     }
 
+    public static Ex02_1_Article_바인딩_설정 of(String title, String content, String hashtag) {
+        return new Ex02_1_Article_바인딩_설정(title, content, hashtag);
+    }
     /* 정적 팩토리 메서드(factory method pattern 중에 하나)
     * 정적 팩토리 메서드란 객체 생성 역할을 하는 클래스 메서드라는 뜻.
     * of 메서드를 이용해서 위에 있는 private 생성자를 직접적으로 사용해서 객체를 생성하게 하는 방법
@@ -109,13 +125,10 @@ public class Ex01_1_Article_엔티티로_변경 {
     * !!! 중요: 무조건 static 으로 놔야 한다. !!!
     *
     * 장점
-    *   1) static 이기 때문에 new 를 이용해서 생성자를 만들지 않아도 된다.
+    *   1) static 이기 때문에 new 를 이요해서 생성자를 만들지 않아도 된다.
     *   2) return 을 가지고 있기 때문에 상속 시 값을 확인할 수 있다. (하위 자료형 객체를 반환할 수 있다.)
     *   3) (중요) 객체 생성을 캡슐화 할 수 있다.
     * */
-    public static Ex01_1_Article_엔티티로_변경 of(String title, String content, String hashtag) {
-        return new Ex01_1_Article_엔티티로_변경(title, content, hashtag);
-    }
 
     /**
      * public : 제한없음.
@@ -147,7 +160,7 @@ public class Ex01_1_Article_엔티티로_변경 {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Ex01_1_Article_엔티티로_변경 article = (Ex01_1_Article_엔티티로_변경) o;
+        Ex02_1_Article_바인딩_설정 article = (Ex02_1_Article_바인딩_설정) o;
         return id.equals(article.id);
 //        return (article.id).equals(id);
 //        return id != null && id.equals(article.id);
