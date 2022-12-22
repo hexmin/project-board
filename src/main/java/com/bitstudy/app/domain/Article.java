@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -30,8 +31,10 @@ import java.util.Set;
 *  @Index - 데이터베이스 인덱스는 추가, 쓰기 및 저장공간을 희생해서 테이블에 대한 데이터 검색 속도를 향상시키는 데이터 구조
 *           @Entity 와 세트로 사용
 *  */
+
+@EntityListeners(AuditingEntityListener.class) /* 이거 없으면 테스트 할때 createdAt 때문에 에러남(Ex04 관련) */
 @Table(indexes = {
-        @Index(columnList = "title"),
+        @Index(columnList = "title"), // 검색속도 빠르게 해주는 작업
         @Index(columnList = "hashtag"),
         @Index(columnList = "createdAt"),
         @Index(columnList = "createdBy")
@@ -46,7 +49,7 @@ public class Article {
     private Long id;
 
     /* @Setter 도 @Getter 처럼 클래스 단위로 걸 수 있는데, 그렇게 하면 모든 필드에 접근이 가능해진다.
-    * 그런데 id 같은 경우에는 내가 부여하는게 아니라 JPA 에서 자동으로 부여해주는 번호이다. 메타데이터들도 자동으로 JPA 가 세팅하게 만들어야 한다. 그래서 id와 메타데이터는 @Setter 가 필요 없다. @Setter 의 경우는 지금처럼 필요한 필드에만 주는걸 연습하자. (이건 내스타일, 회사마다 다름. 하지만 정교하게 하려면 이렇게 하자.) */
+    * 그런데 id 같은 경우에는 내가 부여하는게 아니라 JPA 에서 자동으로 부여해주는 번호이다. 메타데이터들도 자동으로 JPA 가 세팅하게 만들어야 한다. 그래서 id와 메타데이터는 @Setter 가 필요 없다. @Setter 의 경우는 지금처럼 필요한 필드에만 주는걸 연습하자. (이건 강사님 스타일, 회사마다 다름. 하지만 정교하게 하려면 이렇게 하자.) */
 
     /** @Column - 해당 컬럼이 not null 인 경우 @Column(nullable = false) 써준다.
      * 기본값은 true 라서 @Column 을 아예 안쓰면 null 가능.

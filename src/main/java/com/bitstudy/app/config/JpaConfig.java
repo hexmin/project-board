@@ -25,6 +25,6 @@ public class JpaConfig {
     public AuditorAware<String> auditorAware() {
         return () -> Optional.of("bitstudy");
         // 이렇게 하면 앞으로 JPA Auditing 할때마다 사람이름은 이걸로 넣게 된다.
-        // TODO: 나중에 스프링 시큐리티로 인증기능 붙일때 수정필요.
+        // TODO: 나중에 스프링 시큐리티로 인증기능 붙일때 수정필요
     }
 }
