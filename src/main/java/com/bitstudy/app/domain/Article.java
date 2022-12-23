@@ -15,6 +15,29 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
+/** Article 과 ArticleComment 에 있는 공통 필드 (메타데이터. ID 제외) 들을 별도로 빼서 관리할 거임.
+ * 이유는 앞으로 Article 과 ArticleComment 처럼 fk 같은거로 엮여있는 테이블들 만들경우, 모든 domain 안에 있는 파일들에 많은 중복 코드들이 들어가게 된다. 그래서 별도의 파일에 공통되는 것들을 다 몰아넣고 사용하는거 해보기
+ *
+ * 참고: 공통필드를 빼는건 팀마다 다르다.
+ *      중복코드를 싫어해서 한 파일에 다 몰아두는 사람들이 있고,
+ *      (유지보수)
+ *
+ *      중복코드를 괜찮아 해서 각 파일에 그냥 두는 사람도 있다.
+ *      (각 파일에 모든 정보가 다 있다. 변경시 유연하게 코드 작업을 할 수 있다)
+ *
+ * 추출은 두가지 방법으로 할 수 있다.
+ *  1) @Embedded - 공통되는 필드들을 하나의 클래스로 만들어서 @Embedded 있는 곳에서 치환 하는 방식
+ *
+ *  2) @MappedSuperClass - (요즘 실무에서 사용)
+ *              @MappedSuperClass 어노테이션이 붙은곳에서 사용
+ *
+ * 둘의 차이: 사실은 둘이 비슷하지만 @Embedded 방식을 하게 되면 필드가 하나 추가된다.
+ *          영속성 컨텍스트를 통해서 데이터를 넘겨 받아서 어플리케이션으로 열었을때에는 어차피 AuditingField 랑 똑같이 보인다.
+ *          (중간에 한단계가 더 있다는 뜻)
+ *
+ *          @MappedSuperClass 는 표준 JPA 에서 제공해주는 클래스. 중간단계 따로 없이 바로 동작
+ * */
+
 /** 할일: Lombok 사용하기
  * 주의: maven 때랑 같은 방식인 것들도 이름이 다르게 되어 있으니 헷갈리지 않게 주의!
  *
@@ -32,7 +55,7 @@ import java.util.Set;
 *           @Entity 와 세트로 사용
 *  */
 
-@EntityListeners(AuditingEntityListener.class) /* 이거 없으면 테스트 할때 createdAt 때문에 에러남(Ex04 관련) */
+//@EntityListeners(AuditingEntityListener.class) /* 이거 없으면 테스트 할때 createdAt 때문에 에러남(Ex04 관련) */
 @Table(indexes = {
         @Index(columnList = "title"), // 검색속도 빠르게 해주는 작업
         @Index(columnList = "hashtag"),
@@ -42,7 +65,7 @@ import java.util.Set;
 @Entity /* 1) 롬복을 이용해서 클래스를 엔티티로 변경. @Entity 가 붙은 클래스는 JPA 가 관리하게 된다. 그래서 기본키(PK)가 뭔지 알려줘야 한다. 그게 @Id 에너테이션 이다.*/
 @Getter /* 2) getter/setter, toString 등의 롬복 어노테이션 사용 */// 롬복의 @Getter 를 쓰면 알아서 모든 필드의 getter 들이 생성된다.
 @ToString
-public class Article {
+public class Article extends AuditingFields {
 
     @Id // '전체 필드 중에서 이게 PK다' 라고 말해주는거. @Id 가 없으면 @Entity 에서 에러 난다.
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 해당 필드가 auto_increment 인 경우 @GeneratedValue 를 써서 자동으로 값이 생성되게 해줘야 한다. 기본키 전략
@@ -73,6 +96,26 @@ public class Article {
     *
     * */
 
+    /* 1) Embedded 방식 */
+//    class Tmp {
+//        @CreatedDate
+//        @Column(nullable = false)
+//        private LocalDateTime createdAt; // 생성일시
+//
+//        @CreatedBy
+//        @Column(nullable = false, length = 100)
+//        private String createdBy; // 생성자
+//
+//        @LastModifiedDate
+//        @Column(nullable = false)
+//        private LocalDateTime modifiedAt; // 수정일시
+//
+//        @LastModifiedBy
+//        @Column(nullable = false, length = 100)
+//        private String modifiedBy; // 수정자
+//    }
+//    @Embedded Tmp tmp;
+
 
     /**
     jpa auditing: jpa 에서 자동으로 세팅하게 해줄때 사용하는 기능
@@ -80,24 +123,24 @@ public class Article {
                     config 패키지 만들어서 JpaConfig 클래스 만들자
      */
 
-    // 메타데이터
-    @CreatedDate
-    @Column(nullable = false)
-    private LocalDateTime createdAt; // 생성일시
-
-    @CreatedBy
-    @Column(nullable = false, length = 100)
-    private String createdBy; // 생성자
-    /** 다른 생성일시 같은것들은 알아낼 수 있는데, 최초 생성자는 (현재 코드 상태)인증받고 오지 않았기 때문에 따로 알아낼 수가 없다.
-     * 이때 아까 만든 jpaConfig 파일을 사용한다. */
-
-    @LastModifiedDate
-    @Column(nullable = false)
-    private LocalDateTime modifiedAt; // 수정일시
-
-    @LastModifiedBy
-    @Column(nullable = false, length = 100)
-    private String modifiedBy; // 수정자
+//    // 메타데이터
+//    @CreatedDate
+//    @Column(nullable = false)
+//    private LocalDateTime createdAt; // 생성일시
+//
+//    @CreatedBy
+//    @Column(nullable = false, length = 100)
+//    private String createdBy; // 생성자
+//    /** 다른 생성일시 같은것들은 알아낼 수 있는데, 최초 생성자는 (현재 코드 상태)인증받고 오지 않았기 때문에 따로 알아낼 수가 없다.
+//     * 이때 아까 만든 jpaConfig 파일을 사용한다. */
+//
+//    @LastModifiedDate
+//    @Column(nullable = false)
+//    private LocalDateTime modifiedAt; // 수정일시
+//
+//    @LastModifiedBy
+//    @Column(nullable = false, length = 100)
+//    private String modifiedBy; // 수정자
 
     /* 위에 처럼 어노테이션을 붙어주기만 하면 auditing 이 작동한다.
     * @CreatedDate : 최초에 insert 할때 자동으로 한번 넣어준다.
